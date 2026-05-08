@@ -247,7 +247,7 @@ $env:CLAUDE_CONFIG_DIR
 | Custom Provider 401 错误 | 运行 `node tools/patch-custom-profile.js` |
 | Node.js 未找到 | 运行 `START.bat`，它会自动下载 |
 | API Key 被拒绝 | 验证密钥，重新运行选项 4 更新 |
-| 端口 3000 被占用 | 仪表盘已在运行，访问 http://localhost:3000 |
+| 端口 30010 被占用 | 仪表盘已在运行，访问 http://localhost:30010 |
 | Ollama 响应很慢 | 使用更小的模型（如 `gemma3:1b`） |
 
 ---
