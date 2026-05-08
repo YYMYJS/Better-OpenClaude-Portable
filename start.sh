@@ -111,6 +111,15 @@ export XDG_CACHE_HOME="$DATA_DIR/cache"
 export npm_config_cache="$DATA_DIR/npm-cache"
 mkdir -p "$CLAUDE_CONFIG_DIR" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_CACHE_HOME" "$npm_config_cache" "$DATA_DIR"
 
+# ── Auto-copy .claude-memory to data/openclaude/projects/<项目名>/memory/ ──
+PROJECT_NAME="$(basename "$USB_ROOT")"
+MEMORY_SRC="$USB_ROOT/.claude-memory"
+MEMORY_DST="$DATA_DIR/openclaude/projects/$PROJECT_NAME/memory"
+if [ -d "$MEMORY_SRC" ] && [ ! -d "$MEMORY_DST" ]; then
+    mkdir -p "$MEMORY_DST"
+    cp -r "$MEMORY_SRC/"* "$MEMORY_DST/" 2>/dev/null || true
+fi
+
 if ! engine_ready; then
     if [ -d "$OPENCLAUDE_DIR" ]; then
         echo -e "${YELLOW}[~] Incomplete OpenClaude Engine detected. Reinstalling...${RESET}"

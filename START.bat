@@ -44,6 +44,18 @@ if not exist "%XDG_DATA_HOME%" mkdir "%XDG_DATA_HOME%"
 if not exist "%LOCALAPPDATA%" mkdir "%LOCALAPPDATA%"
 if not exist "%npm_config_cache%" mkdir "%npm_config_cache%"
 
+:: ── Auto-copy .claude-memory to data/openclaude/projects/<项目名>/memory/ ──
+:: Extract project name from USB root directory
+for %%i in ("%USB_ROOT%") do set "PROJECT_NAME=%%~ni"
+set "MEMORY_SRC=%USB_ROOT%.claude-memory"
+set "MEMORY_DST=%DATA_DIR%\openclaude\projects\%PROJECT_NAME%\memory"
+if exist "%MEMORY_SRC%" (
+    if not exist "%MEMORY_DST%" (
+        mkdir "%MEMORY_DST%" 2>nul
+        xcopy /E /I /Y "%MEMORY_SRC%" "%MEMORY_DST%" >nul 2>&1
+    )
+)
+
 :: Display Banner
 echo.
 echo !CYAN!    ____            __        __    __        ___    ____!RESET!
