@@ -1,0 +1,12 @@
+{
+  "hasCompletedOnboarding": true,
+  "env": {
+    "CLAUDE_CODE_USE_OPENAI": "1",
+    "OPENAI_API_KEY": "",
+    "OPENAI_BASE_URL": "https://api.minimaxi.com/anthropic",
+    "OPENAI_MODEL": "MiniMax-M2.7",
+    "AI_DISPLAY_MODEL": "MiniMax-M2.7",
+    "API_TIMEOUT_MS": "3000000",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
+  }
+}

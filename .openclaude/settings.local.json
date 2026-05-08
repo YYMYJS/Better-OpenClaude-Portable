@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude mcp:*)",
+      "Bash(openclaude mcp:*)",
+      "Bash(\"./engine/node-win-x64/node.exe\" \"./engine/node_modules/@gitlawb/openclaude/bin/openclaude\" mcp --help)",
+      "Bash(\"./engine/node-win-x64/node.exe\" \"./engine/node_modules/@gitlawb/openclaude/bin/openclaude\" mcp add -s user MiniMax --env MINIMAX_API_KEY=api_key --env MINIMAX_API_HOST=https://api.minimaxi.com -- uvx minimax-coding-plan-mcp -y)",
+      "Bash(\"./engine/node-win-x64/node.exe\" \"./engine/node_modules/@gitlawb/openclaude/bin/openclaude\" mcp list)",
+      "mcp__MiniMax__web_search",
+      "WebSearch",
+      "WebFetch(domain:docs.anthropic.com)"
+    ]
+  }
+}

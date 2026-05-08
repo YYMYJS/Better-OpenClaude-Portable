@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "postinstall": "node patch-rm-force.mjs && node ../tools/patch-custom-profile.js && node ../tools/patch-relative-plugin-paths.mjs"
+  },
+  "dependencies": {
+    "@gitlawb/openclaude": "^0.9.2"
+  }
+}
