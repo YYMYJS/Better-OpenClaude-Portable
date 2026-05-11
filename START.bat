@@ -17,6 +17,7 @@ set "USB_ROOT=%~dp0"
 set "ENGINE_DIR=%USB_ROOT%engine"
 set "DATA_DIR=%USB_ROOT%data"
 set "ENV_FILE=%DATA_DIR%\ai_settings.env"
+set "PROFILE_STORE=%DATA_DIR%\provider_profiles.json"
 set "NODE_VERSION=22.14.0"
 set "NODE_DIR_NAME=node-win-x64"
 set "NODE_DIR=%ENGINE_DIR%\%NODE_DIR_NAME%"
@@ -44,16 +45,32 @@ if not exist "%XDG_DATA_HOME%" mkdir "%XDG_DATA_HOME%"
 if not exist "%LOCALAPPDATA%" mkdir "%LOCALAPPDATA%"
 if not exist "%npm_config_cache%" mkdir "%npm_config_cache%"
 
-:: ── Auto-copy .claude-memory to data/openclaude/projects/<项目名>/memory/ ──
-:: Extract project name from USB root directory
-for %%i in ("%USB_ROOT%") do set "PROJECT_NAME=%%~ni"
+:: ── Auto-copy .claude-memory to OpenClaude project memory dirs ──
+:: OpenClaude stores project memory under data/openclaude/projects/<sanitized full path>/memory.
+:: START.bat launches OpenClaude from ENGINE_DIR, so seed both USB_ROOT and ENGINE_DIR paths.
 set "MEMORY_SRC=%USB_ROOT%.claude-memory"
-set "MEMORY_DST=%DATA_DIR%\openclaude\projects\%PROJECT_NAME%\memory"
 if exist "%MEMORY_SRC%" (
-    if not exist "%MEMORY_DST%" (
-        mkdir "%MEMORY_DST%" 2>nul
-        xcopy /E /I /Y "%MEMORY_SRC%" "%MEMORY_DST%" >nul 2>&1
-    )
+    set "PS1_FILE=%TEMP%\oc_seed_memory.ps1"
+    (
+        echo $ErrorActionPreference = 'SilentlyContinue'
+        echo $memorySrc = '%MEMORY_SRC%'
+        echo $projectsDir = '%DATA_DIR%\openclaude\projects'
+        echo $paths = @^('%USB_ROOT%', '%ENGINE_DIR%'^)
+        echo function Sanitize-OpenClaudePath^([string]$p^) {
+        echo     try { $p = ^(Resolve-Path -LiteralPath $p^).Path } catch { }
+        echo     return ^($p -replace '[^a-zA-Z0-9]', '-'^)
+        echo }
+        echo foreach ^($p in $paths^) {
+        echo     $name = Sanitize-OpenClaudePath $p
+        echo     if ^([string]::IsNullOrWhiteSpace^($name^)^) { continue }
+        echo     $dst = Join-Path $projectsDir ^(Join-Path $name 'memory'^)
+        echo     New-Item -ItemType Directory -Force -Path $dst ^| Out-Null
+        echo     Get-ChildItem -LiteralPath $memorySrc -Force ^| ForEach-Object {
+        echo         Copy-Item -LiteralPath $_.FullName -Destination $dst -Recurse -Force
+        echo     }
+    ) > "!PS1_FILE!"
+    powershell -NoProfile -ExecutionPolicy Bypass -File "!PS1_FILE!" >nul 2>&1
+    del "!PS1_FILE!" 2>nul
 )
 
 :: Display Banner
@@ -838,6 +855,9 @@ set "PS1_FILE=%TEMP%\oc_claude.ps1"
 ) > "!PS1_FILE!"
 powershell -NoProfile -ExecutionPolicy Bypass -File "!PS1_FILE!"
 del "!PS1_FILE!" 2>nul
+if exist "%NODE_DIR%\node.exe" if exist "%USB_ROOT%tools\provider_profiles.js" (
+    "%NODE_DIR%\node.exe" "%USB_ROOT%tools\provider_profiles.js" save "!PROFILE_STORE!" "%ENV_FILE%" >nul 2>&1
+)
 exit /b 0
 
 :finish_setup
@@ -852,6 +872,9 @@ echo.
 :: Load the settings from ai_settings.env
 for /f "usebackq tokens=1,* delims==" %%A in ("%ENV_FILE%") do (
     set "%%A=%%~B"
+)
+if exist "%NODE_DIR%\node.exe" if exist "%USB_ROOT%tools\provider_profiles.js" (
+    "%NODE_DIR%\node.exe" "%USB_ROOT%tools\provider_profiles.js" save "!PROFILE_STORE!" "%ENV_FILE%" >nul 2>&1
 )
 
 if not "!AI_PROVIDER!"=="anthropic" (

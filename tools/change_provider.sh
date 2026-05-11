@@ -10,12 +10,57 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 DATA_DIR="$ROOT_DIR/data"
 ENV_FILE="$DATA_DIR/ai_settings.env"
+PROFILE_STORE="$DATA_DIR/provider_profiles.json"
+PLATFORM="$(uname -s | tr '[:upper:]' '[:lower:]')"
+ARCH="$(uname -m)"
+case "$ARCH" in
+    x86_64|amd64) NODE_ARCH="x64" ;;
+    arm64|aarch64) NODE_ARCH="arm64" ;;
+    *) NODE_ARCH="$ARCH" ;;
+esac
+NODE_BIN="$ROOT_DIR/engine/node-$PLATFORM-$NODE_ARCH/bin/node"
+PROFILE_HELPER="$ROOT_DIR/tools/provider_profiles.js"
 
 mask_key() {
     local key="$1"
     [ -z "$key" ] && echo "not set" && return
     [ ${#key} -le 10 ] && echo "$key" && return
     echo "${key:0:6}****${key: -4}"
+}
+
+save_profile_history() {
+    [ -x "$NODE_BIN" ] || return 0
+    [ -f "$PROFILE_HELPER" ] || return 0
+    "$NODE_BIN" "$PROFILE_HELPER" save "$PROFILE_STORE" "$ENV_FILE" >/dev/null 2>&1 || true
+}
+
+switch_saved_config() {
+    echo ""
+    echo -e "  ${BOLD}--- SWITCH SAVED CONFIG ---${RESET}"
+    if [ ! -f "$PROFILE_STORE" ]; then
+        echo -e "  ${YELLOW}[INFO] No saved configurations yet.${RESET}"
+        return 0
+    fi
+    if [ ! -x "$NODE_BIN" ]; then
+        echo -e "  ${RED}[ERROR] Portable Node.js not found. Run start.sh first.${RESET}"
+        return 1
+    fi
+    local profiles
+    profiles="$($NODE_BIN "$PROFILE_HELPER" list "$PROFILE_STORE" "$ENV_FILE" 2>/dev/null)"
+    if [ "$profiles" = "NO_PROFILES" ] || [ -z "$profiles" ]; then
+        echo -e "  ${YELLOW}[INFO] No saved configurations yet.${RESET}"
+        return 0
+    fi
+    echo "$profiles"
+    echo ""
+    read -p "  Select saved config number (Enter to cancel): " PROFILE_SEL
+    [ -z "$PROFILE_SEL" ] && return 0
+    if "$NODE_BIN" "$PROFILE_HELPER" switch "$PROFILE_STORE" "$ENV_FILE" "$PROFILE_SEL"; then
+        echo -e "  ${GREEN}[OK] Saved configuration restored.${RESET}"
+    else
+        echo -e "  ${RED}[ERROR] Invalid selection.${RESET}"
+        return 1
+    fi
 }
 
 verify_key() {
@@ -103,6 +148,7 @@ EOF
             fi
             ;;
     esac
+    save_profile_history
     echo -e "  ${GREEN}[OK] Configuration updated successfully!${RESET}"
 }
 
@@ -181,11 +227,12 @@ echo ""
 echo -e "  ${BOLD}What would you like to do?${RESET}"
 echo -e "  ${CYAN}1)${RESET} Change Model"
 echo -e "  ${CYAN}2)${RESET} Change API Key"
-echo -e "  ${CYAN}3)${RESET} Full Reset Config ${DIM}(Clear all settings)${RESET}"
-echo -e "  ${CYAN}4)${RESET} Cancel"
+echo -e "  ${CYAN}3)${RESET} Switch Saved Config"
+echo -e "  ${CYAN}4)${RESET} Full Reset Config ${DIM}(Clear all settings)${RESET}"
+echo -e "  ${CYAN}5)${RESET} Cancel"
 echo ""
 
-read -p "  Select an option (1-4): " OPTION
+read -p "  Select an option (1-5): " OPTION
 
 case "$OPTION" in
     1)
@@ -342,11 +389,14 @@ case "$OPTION" in
         save_config
         ;;
     3)
+        switch_saved_config
+        ;;
+    4)
         echo ""
-        read -p "  Are you sure you want to clear ALL settings? (y/N): " CONFIRM
+        read -p "  Are you sure you want to clear current settings? Saved configs will be kept. (y/N): " CONFIRM
         if [[ "$CONFIRM" =~ ^[Yy]$ ]]; then
             rm -f "$ENV_FILE"
-            echo -e "  ${GREEN}[OK] Configuration cleared.${RESET}"
+            echo -e "  ${GREEN}[OK] Current configuration cleared. Saved configs kept.${RESET}"
             echo -e "  ${CYAN}[~] Launching setup...${RESET}"
             echo ""
             exec bash "$ROOT_DIR/start.sh"

@@ -11,6 +11,7 @@ ROOT_DIR="$SCRIPT_DIR"
 ENGINE_DIR="$ROOT_DIR/engine"
 DATA_DIR="$ROOT_DIR/data"
 ENV_FILE="$DATA_DIR/ai_settings.env"
+PROFILE_STORE="$DATA_DIR/provider_profiles.json"
 NODE_VERSION="22.14.0"
 
 OS_NAME=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -42,6 +43,13 @@ NPX_BIN="$NODE_DIR/bin/npx"
 OPENCLAUDE_DIR="$ENGINE_DIR/node_modules/@gitlawb/openclaude"
 OC_BIN="$OPENCLAUDE_DIR/bin/openclaude"
 OC_CLI="$OPENCLAUDE_DIR/dist/cli.mjs"
+PROFILE_HELPER="$ROOT_DIR/tools/provider_profiles.js"
+
+save_profile_history() {
+    [ -x "$NODE_BIN" ] || return 0
+    [ -f "$PROFILE_HELPER" ] || return 0
+    "$NODE_BIN" "$PROFILE_HELPER" save "$PROFILE_STORE" "$ENV_FILE" >/dev/null 2>&1 || true
+}
 
 mkdir -p "$ENGINE_DIR"
 
@@ -111,13 +119,18 @@ export XDG_CACHE_HOME="$DATA_DIR/cache"
 export npm_config_cache="$DATA_DIR/npm-cache"
 mkdir -p "$CLAUDE_CONFIG_DIR" "$XDG_CONFIG_HOME" "$XDG_DATA_HOME" "$XDG_CACHE_HOME" "$npm_config_cache" "$DATA_DIR"
 
-# ── Auto-copy .claude-memory to data/openclaude/projects/<项目名>/memory/ ──
-PROJECT_NAME="$(basename "$USB_ROOT")"
+# ── Auto-copy .claude-memory to OpenClaude project memory dirs ──
+# OpenClaude stores project memory under data/openclaude/projects/<sanitized full path>/memory.
+# start.sh launches OpenClaude from ENGINE_DIR, so seed both USB_ROOT and ENGINE_DIR paths.
 MEMORY_SRC="$USB_ROOT/.claude-memory"
-MEMORY_DST="$DATA_DIR/openclaude/projects/$PROJECT_NAME/memory"
-if [ -d "$MEMORY_SRC" ] && [ ! -d "$MEMORY_DST" ]; then
-    mkdir -p "$MEMORY_DST"
-    cp -r "$MEMORY_SRC/"* "$MEMORY_DST/" 2>/dev/null || true
+if [ -d "$MEMORY_SRC" ]; then
+    for MEMORY_PROJECT_PATH in "$USB_ROOT" "$ENGINE_DIR"; do
+        CANONICAL_PROJECT_PATH="$(cd "$MEMORY_PROJECT_PATH" 2>/dev/null && pwd -P || printf '%s' "$MEMORY_PROJECT_PATH")"
+        MEMORY_PROJECT_NAME="$(printf '%s' "$CANONICAL_PROJECT_PATH" | sed 's/[^a-zA-Z0-9]/-/g')"
+        MEMORY_DST="$DATA_DIR/openclaude/projects/$MEMORY_PROJECT_NAME/memory"
+        mkdir -p "$MEMORY_DST"
+        cp -r "$MEMORY_SRC/"* "$MEMORY_DST/" 2>/dev/null || true
+    done
 fi
 
 if ! engine_ready; then
@@ -185,6 +198,7 @@ fi
 # ─── Provider Setup ────────────────────────────────────────
 save_env() {
     echo "$1" > "$ENV_FILE"
+    save_profile_history
 }
 
 setup_provider() {
@@ -623,6 +637,8 @@ if [ "$goto_loaded" -eq 0 ]; then
         export "$key=$value"
     done <<< "$ENV_CONTENT"
 fi
+
+save_profile_history
 
 # ─── Friendly Provider Name ────────────────────────────────
 PROVIDER_NAME="$AI_PROVIDER"

@@ -15,6 +15,9 @@ set "BOLD=!ESC![1m"
 set "USB_ROOT=%~dp0..\"
 set "DATA_DIR=%USB_ROOT%data"
 set "ENV_FILE=%DATA_DIR%\ai_settings.env"
+set "PROFILE_STORE=%DATA_DIR%\provider_profiles.json"
+set "NODE_EXE=%USB_ROOT%engine\node-win-x64\node.exe"
+set "PROFILE_HELPER=%USB_ROOT%tools\provider_profiles.js"
 
 :load_config
 if exist "%ENV_FILE%" (
@@ -55,13 +58,15 @@ echo.
 echo   !BOLD!What would you like to do?!RESET!
 echo   !CYAN!1^)!RESET! Change Model
 echo   !CYAN!2^)!RESET! Change API Key
-echo   !CYAN!3^)!RESET! Full Reset Config !DIM!(Clear all settings)!RESET!
-echo   !CYAN!4^)!RESET! Cancel
+echo   !CYAN!3^)!RESET! Switch Saved Config
+echo   !CYAN!4^)!RESET! Full Reset Config !DIM!(Clear all settings)!RESET!
+echo   !CYAN!5^)!RESET! Cancel
 echo.
 
-choice /C 1234 /N /M "  Select an option (1-4): "
-if errorlevel 4 goto exit
-if errorlevel 3 goto do_reset
+choice /C 12345 /N /M "  Select an option (1-5): "
+if errorlevel 5 goto exit
+if errorlevel 4 goto do_reset
+if errorlevel 3 goto switch_saved_config
 if errorlevel 2 goto change_key
 if errorlevel 1 goto change_model
 
@@ -307,6 +312,48 @@ if "!AI_PROVIDER!"=="custom" (
 )
 goto save_and_exit
 
+:switch_saved_config
+echo.
+echo   !BOLD!--- SWITCH SAVED CONFIG ---!RESET!
+if not exist "!PROFILE_STORE!" (
+    echo   !YELLOW![INFO] No saved configurations yet.!RESET!
+    pause
+    goto main_menu
+)
+if not exist "!NODE_EXE!" (
+    echo   !RED![ERROR] Portable Node.js not found. Run START.bat first.!RESET!
+    pause
+    goto main_menu
+)
+set "PROFILE_LIST_FILE=%TEMP%\oc_profiles.txt"
+"!NODE_EXE!" "!PROFILE_HELPER!" list "!PROFILE_STORE!" "!ENV_FILE!" > "!PROFILE_LIST_FILE!"
+if errorlevel 1 (
+    echo   !RED![ERROR] Could not read saved configurations.!RESET!
+    del "!PROFILE_LIST_FILE!" 2>nul
+    pause
+    goto main_menu
+)
+findstr /X /C:"NO_PROFILES" "!PROFILE_LIST_FILE!" >nul 2>&1
+if not errorlevel 1 (
+    echo   !YELLOW![INFO] No saved configurations yet.!RESET!
+    del "!PROFILE_LIST_FILE!" 2>nul
+    pause
+    goto main_menu
+)
+type "!PROFILE_LIST_FILE!"
+del "!PROFILE_LIST_FILE!" 2>nul
+echo.
+set "PROFILE_SEL="
+set /p "PROFILE_SEL=  Select saved config number !DIM!(Enter to cancel)!RESET!: "
+if "!PROFILE_SEL!"=="" goto main_menu
+"!NODE_EXE!" "!PROFILE_HELPER!" switch "!PROFILE_STORE!" "!ENV_FILE!" "!PROFILE_SEL!"
+if errorlevel 1 (
+    echo   !RED![ERROR] Invalid selection.!RESET!
+    pause
+    goto main_menu
+)
+goto ask_launch
+
 :save_and_exit
 (
     echo # ========================================================
@@ -351,15 +398,19 @@ goto save_and_exit
     )
 ) > "%ENV_FILE%"
 
+if exist "!NODE_EXE!" if exist "!PROFILE_HELPER!" (
+    "!NODE_EXE!" "!PROFILE_HELPER!" save "!PROFILE_STORE!" "!ENV_FILE!" >nul 2>&1
+)
+
 echo.
 echo   !GREEN![OK] Configuration updated successfully!!RESET!
 goto ask_launch
 
 :do_reset
-set /p "CONFIRM=  Are you sure you want to clear ALL settings? (y/N): "
+set /p "CONFIRM=  Are you sure you want to clear current settings? Saved configs will be kept. (y/N): "
 if /I not "!CONFIRM!"=="Y" goto main_menu
 if exist "%ENV_FILE%" del "%ENV_FILE%"
-echo   !GREEN![OK] Configuration cleared!!RESET!
+echo   !GREEN![OK] Current configuration cleared. Saved configs kept.!RESET!
 goto launch_ai
 
 :ask_launch
