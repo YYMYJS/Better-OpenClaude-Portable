@@ -187,7 +187,7 @@ node tools/patch-custom-profile.js
 1. **验证 MiniMax 可用**：
    ```bash
    NODE_OPTIONS="" \
-     ANTHROPIC_API_KEY="sk-cp-..." \
+     ANTHROPIC_API_KEY="your-minimax-api-key" \
      ANTHROPIC_BASE_URL="https://api.minimaxi.com/anthropic" \
      ANTHROPIC_MODEL="MiniMax-M2.7-highspeed" \
      CLAUDE_CONFIG_DIR="data/openclaude" \

@@ -793,7 +793,9 @@ for /f "usebackq tokens=1,* delims==" %%A in ("%ENV_FILE%") do (
 set "PS1_FILE=%TEMP%\oc_profile.ps1"
 (
     echo $f = '!PROFILE_DIR!\.openclaude-profile.json'
-    echo $p = Get-Content $f -Raw ^| ConvertFrom-Json
+    echo if ^(Test-Path $f^) { try { $p = Get-Content $f -Raw ^| ConvertFrom-Json } catch { $p = [pscustomobject]@{} } } else { $p = [pscustomobject]@{} }
+    echo if ^($null -eq $p.env^) { $p ^| Add-Member -NotePropertyName env -NotePropertyValue ^(@{}^) -Force }
+    echo if ^($null -eq $p.profile^) { $p ^| Add-Member -NotePropertyName profile -NotePropertyValue '' -Force }
     echo $p.profile = '!AI_PROVIDER!'
     echo $p.env = @{}
     echo $p.env['CLAUDE_CODE_USE_OPENAI'] = '!CLAUDE_CODE_USE_OPENAI!'
@@ -816,7 +818,8 @@ del "!PS1_FILE!" 2>nul
 set "PS1_FILE=%TEMP%\oc_claude.ps1"
 (
     echo $f = '!PROFILE_DIR!\.claude.json'
-    echo $j = Get-Content $f -Raw ^| ConvertFrom-Json
+    echo if ^(Test-Path $f^) { try { $j = Get-Content $f -Raw ^| ConvertFrom-Json } catch { $j = [pscustomobject]@{} } } else { $j = [pscustomobject]@{} }
+    echo if ^($null -eq $j.env^) { $j ^| Add-Member -NotePropertyName env -NotePropertyValue ^(@{}^) -Force }
     echo $j.env = @{}
     echo $j.env['CLAUDE_CODE_USE_OPENAI'] = '!CLAUDE_CODE_USE_OPENAI!'
     echo $j.env['OPENAI_API_KEY'] = '!OPENAI_API_KEY!'

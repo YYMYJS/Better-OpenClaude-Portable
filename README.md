@@ -78,7 +78,7 @@ chmod +x start.sh
 ```
 API Type: Anthropic-compatible
 API Base URL: https://api.minimaxi.com/anthropic
-API Key: sk-cp-xxxxx
+API Key: your-minimax-api-key
 Model: MiniMax-M2.7-highspeed
 ```
 
